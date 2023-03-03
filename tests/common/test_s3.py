@@ -4,9 +4,12 @@ Tests for S3BucketConnectorMethods
 
 import os
 import unittest
+from io import BytesIO, StringIO
 import boto3
 from moto import mock_s3
+import pandas as pd
 from source.common.s3 import S3BucketConnector
+from source.common.custom_exceptions import WrongFormatException
 
 class TestS3BucketConnectorMethods(unittest.TestCase):
     """
@@ -48,7 +51,7 @@ class TestS3BucketConnectorMethods(unittest.TestCase):
         # Mocking s3 connection stop
         self.mock_s3.stop()
 
-    def test_list_files_in_prefix_ok(self):
+    def test_list_files_in_prefix(self):
         """
         Tests the list_files_in_prefix method for getting 2 file keys
         as list on the mocked s3 bucket
@@ -95,5 +98,139 @@ class TestS3BucketConnectorMethods(unittest.TestCase):
         # Tests after method execution
         self.assertTrue(not list_result)
 
+    def test_read_csv_to_df(self):
+        """
+        Tests the read_csv_to_df method for reading 1 csv file 
+        from the s3 bucket
+        """
+        # Expected results
+        key_exp = 'test.csv'
+        col1_exp = 'col1'
+        col2_exp = 'col2'
+        val1_exp = 'val1'
+        val2_exp = 'val2'
+        log_exp = f'Reading file {self.s3_endpoint_url}/{self.s3_bucket_name}/{key_exp}'
+        # Test init
+        csv_content = f'{col1_exp},{col2_exp}\n{val1_exp},{val2_exp}'
+        self.s3_bucket.put_object(Body = csv_content, Key = key_exp)
+        # Method execution
+        with self.assertLogs() as logm:
+            df_result = self.s3_bucket_conn.read_csv_to_df(key_exp)
+            # Log test after method execution
+            self.assertIn(log_exp, logm.output[0])
+        # Test after execution
+        self.assertEqual(df_result.shape[0], 1)
+        self.assertEqual(df_result.shape[1], 2)
+        self.assertEqual(val1_exp, df_result[col1_exp][0])
+        self.assertEqual(val2_exp, df_result[col2_exp][0])
+        # Cleanup after tests
+        self.s3_bucket.delete_objects(
+            Delete={
+            'Objects': [
+                {
+                    'Key': key_exp
+                },
+            ]
+            }
+        )
+    
+    def test_write_df_to_s3_empty(self):
+        """
+        Tests the write_df_to_s3 method 
+        when the given dataframe is empty
+        """
+         # Expected results
+        return_exp = None
+        log_exp = 'Dataframe is empty. No file to be written'
+        # Test init
+        dataframe = pd.DataFrame()
+        key = 'key.csv'
+        file_format = 'csv'
+        with self.assertLogs() as logm:
+            result = self.s3_bucket_conn.write_df_to_s3(dataframe, key, file_format)
+            self.assertIn(log_exp, logm.output[0])
+        # Test after execution
+        self.assertEqual(return_exp, result)
+    
+    def test_write_df_to_s3_csv(self):
+        """
+        Tests the write_df_to_s3 method 
+        when the given file_format is csv
+        """
+        # Expected results
+        return_exp = True
+        df_exp = pd.DataFrame([['A', 'B'], ['C', 'D']], columns = ['col1', 'col2'])
+        key_exp = 'test.csv'
+        log_exp = f'Writing file to {self.s3_endpoint_url}/{self.s3_bucket_name}/{key_exp}'
+        # Test init
+        file_format = 'csv'
+        with self.assertLogs() as logm:
+            result = self.s3_bucket_conn.write_df_to_s3(df_exp, key_exp, file_format)
+            self.assertIn(log_exp, logm.output[0])
+        # Test after execution
+        data = self.s3_bucket.Object(key = key_exp).get().get('Body').read().decode('utf-8')
+        out_buffer = StringIO(data)
+        df_result = pd.read_csv(out_buffer)
+        self.assertEqual(return_exp, result)
+        self.assertTrue(df_exp.equals(df_result))
+        # Cleanup after tests
+        self.s3_bucket.delete_objects(
+            Delete={
+            'Objects': [
+                {
+                    'Key': key_exp
+                },
+            ]
+            }
+        )
+
+    def test_write_df_to_s3_parquet(self):
+        """
+        Tests the write_df_to_s3 method 
+        when the given file_format is parquet
+        """
+        # Expected results
+        return_exp = True
+        df_exp = pd.DataFrame([['A', 'B'], ['C', 'D']], columns = ['col1', 'col2'])
+        key_exp = 'test.parquet'
+        log_exp = f'Writing file to {self.s3_endpoint_url}/{self.s3_bucket_name}/{key_exp}'
+        # Test init
+        file_format = 'parquet'
+        with self.assertLogs() as logm:
+            result = self.s3_bucket_conn.write_df_to_s3(df_exp, key_exp, file_format)
+            self.assertIn(log_exp, logm.output[0])
+        # Test after execution
+        data = self.s3_bucket.Object(key = key_exp).get().get('Body').read()
+        out_buffer = BytesIO(data)
+        df_result = pd.read_parquet(out_buffer)
+        self.assertEqual(return_exp, result)
+        self.assertTrue(df_exp.equals(df_result))
+        # Cleanup after tests
+        self.s3_bucket.delete_objects(
+            Delete={
+            'Objects': [
+                {
+                    'Key': key_exp
+                },
+            ]
+            }
+        )
+    def test_write_df_to_s3_wrong_format(self):
+        """
+        Tests the write_df_to_s3 method 
+        when the given file_format is not supported
+        """
+        # Expected results
+        df_exp = pd.DataFrame([['A', 'B'], ['C', 'D']], columns = ['col1', 'col2'])
+        file_format = 'wrong_format'
+        key_exp = 'test.parquet'
+        log_exp = f'The file format {file_format} is not supported'
+        exception_exp = WrongFormatException
+        # Test init
+        with self.assertLogs() as logm:
+            with self.assertRaises(exception_exp):
+                self.s3_bucket_conn.write_df_to_s3(df_exp, key_exp, file_format)
+            self.assertIn(log_exp, logm.output[0])
+        
 if __name__ == "__main__":
     unittest.main()

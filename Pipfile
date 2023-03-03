@@ -9,6 +9,7 @@ boto3 = "*"
 pyyaml = "*"
 moto = "*"
 coverage = "*"
+pyarrow = "*"
 
 [dev-packages]
 
