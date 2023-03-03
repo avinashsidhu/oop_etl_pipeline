@@ -6,6 +6,9 @@ name = "pypi"
 [packages]
 pandas = "*"
 boto3 = "*"
+pyyaml = "*"
+moto = "*"
+coverage = "*"
 
 [dev-packages]
 
