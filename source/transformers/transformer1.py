@@ -1,6 +1,7 @@
 """
 ETL transformer component
 """
+import logging
 from typing import NamedTuple
 from source.common.s3 import S3BucketConnector
 
@@ -74,6 +75,7 @@ class ETL():
         : param src_args: NamedTuple class with source config data
         : param trg_args: NamedTuple class with target config data
         """
+        self._logger = logging.getLogger(__name__)
         self.s3_bucket_src = s3_bucket_src
         self.s3_bucket_trg = s3_bucket_trg
         self.meta_key = meta_key
