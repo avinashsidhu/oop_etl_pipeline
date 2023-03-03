@@ -4,7 +4,9 @@ Connector and methods accessing S3
 
 import os
 import logging
+from io import StringIO
 import boto3
+import pandas as pd
 
 class S3BucketConnector():
     """
@@ -38,8 +40,19 @@ class S3BucketConnector():
         files = [obj.key for obj in self._bucket.objects.filter(Prefix = prefix)]
         return files
 
-    def read_csv_to_df(self):
-        pass
+    def read_csv_to_df(self, key: str, decoding: str = 'utf-8', delimiter: str = ','):
+        """
+        Reading the csv files from the s3 bucket using the key
+
+        :param key: key of the file that is to be read
+        :param encoding: encoding of the data in csv, default used - 'utf-8'
+        :param delimiter: separator of the csv file, default - ','
+        """
+        self._logger.info('Reading file %s/%s/%s', self.endpoint_url, self._bucket.name, key)
+        csv_obj = self._bucket.Object(key = key).get().get('Body').read().decode(decoding)
+        data = StringIO(csv_obj)
+        dataframe = pd.read_csv(data, delimiter = delimiter)
+        return dataframe
 
     def write_df_to_s3(self):
         pass
