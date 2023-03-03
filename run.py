@@ -4,8 +4,9 @@ Running the application
 
 import logging
 import logging.config
-import yaml
 from os import getcwd
+import yaml
+
 
 def main():
     """
@@ -13,7 +14,7 @@ def main():
     """
     # Parsing YAML
     config_path = f'{getcwd()}/configs/report1_config.yml'
-    config = yaml.safe_load(open(config_path))
+    config = yaml.safe_load(open(config_path, 'rt', encoding='utf8'))
     # Configure logging
     log_config = config['logging']
     logging.config.dictConfig(log_config)

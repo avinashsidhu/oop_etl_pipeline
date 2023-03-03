@@ -31,12 +31,15 @@ class S3BucketConnector():
         Listing all files with a prefix on the S3 bucket
         
         :param prefix: prefix in the object names stored on the S3 bucket which should be filtered
+        
+        returns:
+            files: list of all file names containing the prefix
         """
         files = [obj.key for obj in self._bucket.objects.filter(Prefix = prefix)]
         return files
 
     def read_csv_to_df(self):
         pass
-    
+
     def write_df_to_s3(self):
         pass
