@@ -3,7 +3,9 @@ ETL transformer component
 """
 import logging
 from typing import NamedTuple
+import pandas as pd
 from source.common.s3 import S3BucketConnector
+from source.common.meta import MetaProcess
 
 class SourceConfig(NamedTuple):
     """
@@ -81,12 +83,28 @@ class ETL():
         self.meta_key = meta_key
         self.src_args = src_args
         self.trg_args = trg_args
-        self.extract_date = ''
-        self.extract_date_list = []
-        self.meta_update_list =  []
+        self.extract_date, self.extract_date_list = MetaProcess.return_date_list(
+            self.src_args.src_first_extract_date, self.meta_key, self.s3_bucket_trg
+        )
+        self.meta_update_list =  None
 
     def extract(self):
-        pass
+        """
+        Read the source data and concatenate it to dataframe
+
+        :returns:
+            dataframe: dataframe with the extracted data
+        """
+        self._logger.info('Extracting source files started')
+        files = [key for date in self.extract_date_list\
+                  for key in self.s3_bucket_src.list_files_in_prefix(date)]
+        if not files:
+            dataframe = pd.DataFrame()
+        else:
+            dataframe = pd.concat([self.s3_bucket_src.read_csv_to_df(file)\
+                                   for file in files], ignore_index = True)
+        self._logger.info("Extracting source files done")
+        return dataframe
 
     def transform_report1(self):
         pass
