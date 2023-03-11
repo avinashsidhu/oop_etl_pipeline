@@ -7,11 +7,13 @@ name = "pypi"
 pandas = "*"
 boto3 = "*"
 pyyaml = "*"
-moto = "*"
-coverage = "*"
 pyarrow = "*"
 
 [dev-packages]
+awscli = "*"
+jupyter = "*"
+moto = "*"
+coverage = "*"
 
 [requires]
 python_version = "3.11"
